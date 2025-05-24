@@ -6,7 +6,6 @@ local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
-
 local DEFAULT_CONFIG = {
     PrimaryColor = Color3.fromRGB(100, 70, 200),
     SecondaryColor = Color3.fromRGB(40, 40, 50),
@@ -59,6 +58,7 @@ function NixteraUI:CreateWindow(options)
         Size = options.Size or UDim2.fromOffset(500, 600),
         Position = options.Position or UDim2.fromOffset(100, 100),
         Tabs = {},
+        ActiveTab = nil,
         Minimized = false,
         Visible = true
     }
@@ -126,24 +126,159 @@ function NixteraUI:CreateWindow(options)
         windowFrame.Visible = false
     end)
     
+    local tabBar = Instance.new("Frame")
+    tabBar.Name = "TabBar"
+    tabBar.Size = UDim2.new(1, 0, 0, 40)
+    tabBar.Position = UDim2.new(0, 0, 0, 30)
+    tabBar.BackgroundColor3 = self.Themes[self.Config.Theme].Card
+    tabBar.BorderSizePixel = 0
+    tabBar.Parent = windowFrame
+    
     local contentFrame = Instance.new("Frame")
     contentFrame.Name = "Content"
-    contentFrame.Size = UDim2.new(1, 0, 1, -30)
-    contentFrame.Position = UDim2.new(0, 0, 0, 30)
+    contentFrame.Size = UDim2.new(1, 0, 1, -70) 
+    contentFrame.Position = UDim2.new(0, 0, 0, 70)
     contentFrame.BackgroundTransparency = 1
     contentFrame.Parent = windowFrame
+    
+    local tabsContainer = Instance.new("Frame")
+    tabsContainer.Name = "TabsContainer"
+    tabsContainer.Size = UDim2.new(1, -20, 1, 0)
+    tabsContainer.Position = UDim2.new(0, 10, 0, 0)
+    tabsContainer.BackgroundTransparency = 1
+    tabsContainer.Parent = tabBar
     
     function window:CreateTab(name, icon)
         local tab = {
             Name = name,
             Icon = icon,
+            Content = Instance.new("Frame"),
+            Button = Instance.new("TextButton"),
             Sections = {}
         }
         
-        -- soon...
+        tab.Content.Name = name .. "Content"
+        tab.Content.Size = UDim2.new(1, 0, 1, 0)
+        tab.Content.Position = UDim2.new(0, 0, 0, 0)
+        tab.Content.BackgroundTransparency = 1
+        tab.Content.Visible = false
+        tab.Content.Parent = contentFrame
+        
+        tab.Button.Name = name .. "Tab"
+        tab.Button.Text = name
+        tab.Button.Font = self.Config.Font
+        tab.Button.TextColor3 = self.Config.TextColor
+        tab.Button.TextSize = 14
+        tab.Button.Size = UDim2.new(0, 100, 1, 0)
+        tab.Button.Position = UDim2.new(0, (#window.Tabs * 110), 0, 0)
+        tab.Button.BackgroundColor3 = self.Themes[self.Config.Theme].Card
+        tab.Button.BorderSizePixel = 0
+        tab.Button.AutoButtonColor = false
+        tab.Button.Parent = tabsContainer
+        
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0, 6)
+        corner.Parent = tab.Button
+        
+        tab.Button.MouseButton1Click:Connect(function()
+            window:SetActiveTab(tab)
+        end)
+        
+        function tab:CreateSection(title)
+            local section = {
+                Title = title,
+                Frame = Instance.new("Frame"),
+                Elements = {}
+            }
+            
+            section.Frame.Name = title .. "Section"
+            section.Frame.Size = UDim2.new(1, -20, 0, 0)
+            section.Frame.AutomaticSize = Enum.AutomaticSize.Y
+            section.Frame.Position = UDim2.new(0, 10, 0, (#tab.Sections * 10 + (#tab.Sections * 150))
+            section.Frame.BackgroundColor3 = self.Themes[self.Config.Theme].Card
+            section.Frame.BorderSizePixel = 0
+            section.Frame.Parent = tab.Content
+            
+            local corner = Instance.new("UICorner")
+            corner.CornerRadius = self.Config.CornerRadius
+            corner.Parent = section.Frame
+            
+            local header = Instance.new("Frame")
+            header.Name = "Header"
+            header.Size = UDim2.new(1, 0, 0, 30)
+            header.BackgroundTransparency = 1
+            header.Parent = section.Frame
+            
+            local titleLabel = Instance.new("TextLabel")
+            titleLabel.Name = "Title"
+            titleLabel.Text = "  " .. title
+            titleLabel.Font = self.Config.Font
+            titleLabel.TextColor3 = self.Config.TextColor
+            titleLabel.TextSize = 16
+            titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+            titleLabel.BackgroundTransparency = 1
+            titleLabel.Size = UDim2.new(1, 0, 1, 0)
+            titleLabel.Parent = header
+            
+            local content = Instance.new("Frame")
+            content.Name = "Content"
+            content.Size = UDim2.new(1, -10, 0, 0)
+            content.Position = UDim2.new(0, 5, 0, 35)
+            content.AutomaticSize = Enum.AutomaticSize.Y
+            content.BackgroundTransparency = 1
+            content.Parent = section.Frame
+            
+            function section:AddButton(params)
+                return self:AddElement("Button", params)
+            end
+            
+            function section:AddToggle(params)
+                return self:AddElement("Toggle", params)
+            end
+            
+            function section:AddElement(type, params)
+                local element
+                
+                if type == "Button" then
+                    element = self:CreateButton(params)
+                elseif type == "Toggle" then
+                    element = self:CreateToggle(params)
+                end
+                
+                table.insert(section.Elements, element)
+                return element
+            end
+            
+            function section:CreateButton(params)
+                return NixteraUI:CreateButton(content, params)
+            end
+            
+            function section:CreateToggle(params)
+                return NixteraUI:CreateToggle(content, params)
+            end
+            
+            table.insert(tab.Sections, section)
+            return section
+        end
         
         table.insert(window.Tabs, tab)
+        
+        if #window.Tabs == 1 then
+            window:SetActiveTab(tab)
+        end
+        
         return tab
+    end
+    
+    function window:SetActiveTab(tab)
+        if window.ActiveTab then
+            window.ActiveTab.Content.Visible = false
+            window.ActiveTab.Button.BackgroundColor3 = self.Themes[self.Config.Theme].Card
+        end
+        
+        window.ActiveTab = tab
+        tab.Content.Visible = true
+        tab.Button.BackgroundColor3 = self.Config.PrimaryColor
     end
     
     local dragging
@@ -199,8 +334,8 @@ function NixteraUI:CreateButton(parent, config)
     buttonFrame.Font = self.Config.Font
     buttonFrame.TextColor3 = self.Config.TextColor
     buttonFrame.TextSize = 14
-    buttonFrame.Size = config.Size or UDim2.new(1, -20, 0, 36)
-    buttonFrame.Position = config.Position or UDim2.new(0, 10, 0, 0)
+    buttonFrame.Size = config.Size or UDim2.new(1, 0, 0, 36)
+    buttonFrame.Position = config.Position or UDim2.new(0, 0, 0, (#parent:GetChildren() * 40))
     buttonFrame.BackgroundColor3 = button.Enabled and self.Config.PrimaryColor or self.Config.DisabledColor
     buttonFrame.BorderSizePixel = 0
     buttonFrame.AutoButtonColor = button.Enabled
@@ -262,8 +397,8 @@ function NixteraUI:CreateToggle(parent, config)
     
     local toggleFrame = Instance.new("Frame")
     toggleFrame.Name = "Toggle"
-    toggleFrame.Size = config.Size or UDim2.new(1, -20, 0, 30)
-    toggleFrame.Position = config.Position or UDim2.new(0, 10, 0, 0)
+    toggleFrame.Size = config.Size or UDim2.new(1, 0, 0, 30)
+    toggleFrame.Position = config.Position or UDim2.new(0, 0, 0, (#parent:GetChildren() * 40))
     toggleFrame.BackgroundTransparency = 1
     toggleFrame.Parent = parent
     
@@ -282,7 +417,7 @@ function NixteraUI:CreateToggle(parent, config)
     local toggleButton = Instance.new("TextButton")
     toggleButton.Name = "ToggleButton"
     toggleButton.Size = UDim2.new(0, 40, 0, 20)
-    toggleButton.Position = UDim2.new(1, -40, 0.5, -10)
+    toggleButton.Position = UDim2.new(1, -5, 0.5, -10)
     toggleButton.AnchorPoint = Vector2.new(1, 0.5)
     toggleButton.BackgroundColor3 = toggle.Value and self.Config.PrimaryColor or Color3.fromRGB(100, 100, 100)
     toggleButton.BorderSizePixel = 0
