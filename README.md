@@ -4,7 +4,7 @@ A sleek, customizable UI library for Lua environments (Roblox, FiveM, Love2D, et
 
 ## 📥 Installation
 ```lua
-local NixteraUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Nixtera/NixteraUI/main/source.lua"))()
+local NixteraUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Nixtera/NixteraUI/refs/heads/main/NixteraUI.lua"))()
 ```
 
 ## ✨ Features
